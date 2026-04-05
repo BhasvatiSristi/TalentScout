@@ -5,19 +5,26 @@ This module handles HTTP requests for resume file uploads.
 It calls resume_service to do the actual work and stores the extracted text in the database.
 """
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.resume import Resume
 from app.schemas.resume import ResumeCreateResponse, ResumeExtractResponse
 from app.services.resume_service import extract_text_from_pdf
+from app.services.scoring_service import (
+    calculate_ats_score,
+    extract_skills,
+    get_required_skills,
+    match_skills,
+)
 
 router = APIRouter()
 
 
 @router.post("/upload", response_model=ResumeExtractResponse)
 async def upload_and_extract_resume(
+    job_role: str = Form(...),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> ResumeExtractResponse:
@@ -52,6 +59,11 @@ async def upload_and_extract_resume(
 
     try:
         extracted_text = extract_text_from_pdf(file_content)
+        extracted_skills = extract_skills(extracted_text)
+        required_skills = get_required_skills(job_role)
+        matched_skills = match_skills(extracted_skills, required_skills)
+        ats_score = calculate_ats_score(matched_skills, required_skills)
+
         resume_record = Resume(file_name=file.filename, extracted_text=extracted_text)
 
         db.add(resume_record)
@@ -59,7 +71,17 @@ async def upload_and_extract_resume(
         db.refresh(resume_record)
 
         return ResumeExtractResponse(
-            data=ResumeCreateResponse.model_validate(resume_record),
+            data=ResumeCreateResponse(
+                id=resume_record.id,
+                file_name=resume_record.file_name,
+                extracted_text=resume_record.extracted_text,
+                job_role=job_role,
+                extracted_skills=extracted_skills,
+                required_skills=required_skills,
+                matched_skills=matched_skills,
+                ats_score=ats_score,
+                created_at=resume_record.created_at,
+            ),
         )
 
     except ValueError as exc:

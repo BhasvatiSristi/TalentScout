@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.database import Base, engine
+from app.models.candidate import Candidate
 from app.models.resume import Resume
 from app.routes.candidates import router as candidates_router
 from app.routes.resume import router as resume_router

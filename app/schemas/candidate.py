@@ -12,9 +12,3 @@ class CandidateIntakeResponse(BaseModel):
     message: str
     data: CandidateIntakeRequest
 
-
-class ResumeExtractResponse(BaseModel):
-    """Response schema for resume text extraction."""
-    extracted_text: str = Field(..., description="Extracted text from the PDF resume")
-    file_name: str = Field(..., description="Name of the uploaded PDF file")
-    message: str = Field(default="Resume text extracted successfully")

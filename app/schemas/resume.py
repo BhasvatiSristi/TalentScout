@@ -9,6 +9,11 @@ class ResumeCreateResponse(BaseModel):
     id: int
     file_name: str
     extracted_text: str
+    job_role: str
+    extracted_skills: list[str]
+    required_skills: list[str]
+    matched_skills: list[str]
+    ats_score: float
     created_at: datetime
 
 
