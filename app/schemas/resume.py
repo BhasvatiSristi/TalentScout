@@ -13,6 +13,7 @@ class ResumeCreateResponse(BaseModel):
     extracted_skills: list[str]
     required_skills: list[str]
     matched_skills: list[str]
+    interview_questions: list[str]
     ats_score: float
     created_at: datetime
 

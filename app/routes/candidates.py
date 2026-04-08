@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.candidate import Candidate
-from app.schemas.candidate import CandidateIntakeRequest, CandidateIntakeResponse
+from app.schemas.candidate import CandidateCreateResponse, CandidateIntakeRequest, CandidateIntakeResponse
 
 router = APIRouter()
 
@@ -31,7 +31,16 @@ def create_candidate_intake(
             detail="A candidate with this email already exists.",
         )
 
+    db.refresh(candidate)
+
     return CandidateIntakeResponse(
         message="Candidate intake received successfully",
-        data=payload,
+        data=CandidateCreateResponse(
+            id=candidate.id,
+            name=candidate.name,
+            email=candidate.email,
+            phone=candidate.phone,
+            job_role=candidate.job_role,
+            created_at=candidate.created_at,
+        ),
     )

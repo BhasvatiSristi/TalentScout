@@ -34,3 +34,5 @@ dist/
 *.sqlite
 'talentscout.db'
 *.sqlite3
+
+api_check.py

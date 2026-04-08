@@ -30,7 +30,7 @@ def submit_candidate(candidate_data: dict) -> dict:
     return response.json()
 
 
-def upload_resume(resume_file, job_role: str) -> dict:
+def upload_resume(resume_file, candidate_id: int, job_role: str) -> dict:
     files = {
         "file": (
             resume_file.name,
@@ -38,11 +38,28 @@ def upload_resume(resume_file, job_role: str) -> dict:
             resume_file.type or "application/pdf",
         )
     }
-    data = {"job_role": job_role}
+    data = {"candidate_id": str(candidate_id), "job_role": job_role}
     response = requests.post(
         f"{BACKEND_URL}/candidates/resume/upload",
         data=data,
         files=files,
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def submit_interview_answers(
+    candidate_id: int,
+    responses: list[dict[str, str]],
+) -> dict:
+    payload = {
+        "candidate_id": candidate_id,
+        "responses": responses,
+    }
+    response = requests.post(
+        f"{BACKEND_URL}/candidates/interview-answers/submit",
+        json=payload,
         timeout=30,
     )
     response.raise_for_status()
@@ -79,7 +96,69 @@ def format_backend_error(detail) -> str:
     return "Request failed. Please check your input and try again."
 
 
+def render_interview_questions(candidate_id: int, questions: list[str]) -> None:
+    if not questions:
+        st.info("No interview questions were generated for this submission.")
+        return
+
+    st.subheader("AI-Generated Interview Questions")
+    st.caption("Answer each question below, then submit your responses.")
+
+    with st.form("interview_answers_form"):
+        answers: list[str] = []
+        for index, question in enumerate(questions, start=1):
+            st.markdown(f"**Q{index}. {question}**")
+            answer = st.text_area(
+                label=f"Your answer for Q{index}",
+                key=f"interview_answer_{index}",
+                placeholder="Type your answer here...",
+                height=110,
+                label_visibility="collapsed",
+            )
+            answers.append(answer.strip())
+
+        submitted_answers = st.form_submit_button("Submit Answers")
+
+    if submitted_answers:
+        unanswered = [str(i) for i, answer in enumerate(answers, start=1) if not answer]
+        if unanswered:
+            st.warning(f"Please answer all questions. Missing: {', '.join(unanswered)}")
+            return
+
+        response_payload = [
+            {
+                "question": question,
+                "answer": answer,
+            }
+            for question, answer in zip(questions, answers)
+        ]
+
+        try:
+            with st.spinner("Saving your interview responses..."):
+                submit_interview_answers(
+                    candidate_id=candidate_id,
+                    responses=response_payload,
+                )
+            st.success(f"Your interview responses were submitted successfully.")
+        except requests.HTTPError as error:
+            error_detail = "Could not save responses."
+            if error.response is not None:
+                try:
+                    error_payload = error.response.json()
+                    error_detail = format_backend_error(error_payload.get("detail", error_detail))
+                except ValueError:
+                    error_detail = error.response.text or error_detail
+            st.error(f"Backend error: {error_detail}")
+        except requests.RequestException:
+            st.error("Could not connect to the backend while saving answers.")
+
+
 st.set_page_config(page_title="TalentScout - AI Hiring Assistant", page_icon="🧭", layout="centered")
+
+if "current_candidate_id" not in st.session_state:
+    st.session_state.current_candidate_id = None
+if "current_interview_questions" not in st.session_state:
+    st.session_state.current_interview_questions = []
 
 st.title("TalentScout - AI Hiring Assistant")
 st.write("Submit candidate details and upload a resume to send data to the FastAPI backend.")
@@ -116,21 +195,15 @@ if submitted:
         try:
             with st.spinner("Sending candidate data and uploading resume..."):
                 candidate_response = submit_candidate(candidate_payload)
-                resume_response = upload_resume(resume_file, job_role.strip())
+                candidate_id = int(candidate_response["data"]["id"])
+                resume_response = upload_resume(resume_file, candidate_id, job_role.strip())
 
-            extracted_text = resume_response["data"]["extracted_text"]
-            preview_text = extract_preview_lines(extracted_text)
+            interview_questions = resume_response["data"].get("interview_questions", [])
+
+            st.session_state.current_candidate_id = candidate_id
+            st.session_state.current_interview_questions = interview_questions
 
             st.success("Candidate submitted and resume uploaded successfully.")
-
-            st.subheader("Candidate API Response")
-            st.json(candidate_response)
-
-            st.subheader("Resume Upload Response")
-            st.json(resume_response)
-
-            st.subheader("Extracted Text Preview")
-            st.text(preview_text)
 
         except requests.HTTPError as error:
             error_detail = "Request failed."
@@ -143,5 +216,11 @@ if submitted:
             st.error(f"Backend error: {error_detail}")
         except requests.RequestException:
             st.error("Could not connect to the backend. Make sure FastAPI is running on http://127.0.0.1:8000.")
+
+if st.session_state.current_candidate_id and st.session_state.current_interview_questions:
+    render_interview_questions(
+        candidate_id=int(st.session_state.current_candidate_id),
+        questions=st.session_state.current_interview_questions,
+    )
 
 st.divider()
