@@ -10,6 +10,8 @@ FIELD_LABELS = {
     "phone": "Phone",
     "job_role": "Job Role",
     "file": "Resume",
+    "confidence_score": "Confidence Score",
+    "experience_rating": "Experience Rating",
 }
 
 JOB_ROLE_OPTIONS = [
@@ -62,6 +64,17 @@ def submit_interview_answers(
         json=payload,
         timeout=30,
     )
+    response.raise_for_status()
+    return response.json()
+
+
+def submit_feedback(candidate_id: int, confidence_score: int, experience_rating: str) -> dict:
+    payload = {
+        "candidate_id": candidate_id,
+        "confidence_score": confidence_score,
+        "experience_rating": experience_rating,
+    }
+    response = requests.post(f"{BACKEND_URL}/submit-feedback", json=payload, timeout=30)
     response.raise_for_status()
     return response.json()
 
@@ -140,6 +153,8 @@ def render_interview_questions(candidate_id: int, questions: list[str]) -> None:
                     responses=response_payload,
                 )
             st.success(f"Your interview responses were submitted successfully.")
+            st.session_state.feedback_candidate_id = candidate_id
+            st.session_state.current_interview_questions = []
         except requests.HTTPError as error:
             error_detail = "Could not save responses."
             if error.response is not None:
@@ -153,12 +168,60 @@ def render_interview_questions(candidate_id: int, questions: list[str]) -> None:
             st.error("Could not connect to the backend while saving answers.")
 
 
+def render_feedback_form(candidate_id: int) -> None:
+    st.subheader("Interview Feedback")
+    st.caption("Share a quick final rating before finishing the process.")
+
+    with st.form("feedback_form"):
+        confidence_score = st.slider("Confidence Score", min_value=1, max_value=10, value=7)
+        experience_rating = st.text_input(
+            "Experience Rating",
+            placeholder="For example: Strong communication, solid technical skills",
+        )
+        submitted_feedback = st.form_submit_button("Submit Feedback")
+
+    if submitted_feedback:
+        if not experience_rating.strip():
+            st.warning("Please enter an experience rating before submitting.")
+            return
+
+        try:
+            with st.spinner("Saving feedback and sending email..."):
+                feedback_response = submit_feedback(
+                    candidate_id=candidate_id,
+                    confidence_score=confidence_score,
+                    experience_rating=experience_rating.strip(),
+                )
+
+            email_sent = feedback_response["data"].get("email_sent", False)
+            if email_sent:
+                st.success("Feedback submitted and email sent successfully.")
+            else:
+                st.success("Feedback submitted successfully.")
+                st.warning(feedback_response["data"].get("email_error", "Email could not be sent."))
+
+            st.session_state.feedback_candidate_id = None
+        except requests.HTTPError as error:
+            error_detail = "Could not save feedback."
+            if error.response is not None:
+                try:
+                    error_payload = error.response.json()
+                    error_detail = format_backend_error(error_payload.get("detail", error_detail))
+                except ValueError:
+                    error_detail = error.response.text or error_detail
+            st.error(f"Backend error: {error_detail}")
+        except requests.RequestException:
+            st.error("Could not connect to the backend while saving feedback.")
+
+
 st.set_page_config(page_title="TalentScout - AI Hiring Assistant", page_icon="🧭", layout="centered")
 
 if "current_candidate_id" not in st.session_state:
     st.session_state.current_candidate_id = None
 if "current_interview_questions" not in st.session_state:
     st.session_state.current_interview_questions = []
+if "feedback_candidate_id" not in st.session_state:
+    st.session_state.feedback_candidate_id = None
 
 st.title("TalentScout - AI Hiring Assistant")
 st.write("Submit candidate details and upload a resume to send data to the FastAPI backend.")
@@ -222,5 +285,8 @@ if st.session_state.current_candidate_id and st.session_state.current_interview_
         candidate_id=int(st.session_state.current_candidate_id),
         questions=st.session_state.current_interview_questions,
     )
+
+if st.session_state.feedback_candidate_id:
+    render_feedback_form(candidate_id=int(st.session_state.feedback_candidate_id))
 
 st.divider()
