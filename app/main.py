@@ -33,6 +33,8 @@ def _ensure_resumes_columns() -> None:
         column_names = {row[1] for row in rows}
         if "candidate_id" not in column_names:
             connection.execute(text("ALTER TABLE resumes ADD COLUMN candidate_id INTEGER"))
+        if "ats_score" not in column_names:
+            connection.execute(text("ALTER TABLE resumes ADD COLUMN ats_score FLOAT DEFAULT 0"))
 
 
 @app.on_event("startup")

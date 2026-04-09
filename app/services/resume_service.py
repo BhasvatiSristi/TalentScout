@@ -75,6 +75,7 @@ def process_resume_upload(
             candidate_id=candidate_id,
             file_name=file_name,
             extracted_text=extracted_text,
+            ats_score=ats_score,
         )
         db.add(resume_record)
 

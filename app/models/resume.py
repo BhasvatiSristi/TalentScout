@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
 
 from app.database import Base
 
@@ -12,4 +12,5 @@ class Resume(Base):
     candidate_id = Column(Integer, ForeignKey("candidates.id"), nullable=True, index=True)
     file_name = Column(String(255), nullable=False)
     extracted_text = Column(Text, nullable=False)
+    ats_score = Column(Float, nullable=False, default=0.0)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
