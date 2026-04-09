@@ -7,6 +7,7 @@ class ResumeCreateResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    candidate_id: int | None = None
     file_name: str
     extracted_text: str
     job_role: str

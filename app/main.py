@@ -27,10 +27,19 @@ def _ensure_interview_answers_columns() -> None:
             connection.execute(text("ALTER TABLE interview_answers ADD COLUMN interview_submitted_at DATETIME"))
 
 
+def _ensure_resumes_columns() -> None:
+    with engine.begin() as connection:
+        rows = connection.execute(text("PRAGMA table_info(resumes)")).fetchall()
+        column_names = {row[1] for row in rows}
+        if "candidate_id" not in column_names:
+            connection.execute(text("ALTER TABLE resumes ADD COLUMN candidate_id INTEGER"))
+
+
 @app.on_event("startup")
 def create_tables() -> None:
     Base.metadata.create_all(bind=engine)
     _ensure_interview_answers_columns()
+    _ensure_resumes_columns()
 
 
 @app.get("/")
