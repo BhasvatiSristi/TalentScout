@@ -14,7 +14,6 @@ def save_feedback_and_send_email(
     db: Session,
     candidate_id: int,
     confidence_score: int,
-    experience_rating: str,
 ) -> dict:
     """Save feedback, then send the email summary."""
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
@@ -32,7 +31,6 @@ def save_feedback_and_send_email(
     feedback_row = Feedback(
         candidate_id=candidate_id,
         confidence_score=confidence_score,
-        experience_rating=experience_rating.strip(),
     )
 
     try:
@@ -49,7 +47,6 @@ def save_feedback_and_send_email(
         "Thank you for completing your interview process.\n\n"
         f"ATS Score: {ats_score}\n"
         f"Confidence Score: {confidence_score}/10\n"
-        f"Experience Rating: {experience_rating.strip()}\n\n"
         "Regards,\n"
         "TalentScout Team"
     )

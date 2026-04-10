@@ -11,7 +11,6 @@ FIELD_LABELS = {
     "job_role": "Job Role",
     "file": "Resume",
     "confidence_score": "Confidence Score",
-    "experience_rating": "Experience Rating",
 }
 
 JOB_ROLE_OPTIONS = [
@@ -68,11 +67,10 @@ def submit_interview_answers(
     return response.json()
 
 
-def submit_feedback(candidate_id: int, confidence_score: int, experience_rating: str) -> dict:
+def submit_feedback(candidate_id: int, confidence_score: int) -> dict:
     payload = {
         "candidate_id": candidate_id,
         "confidence_score": confidence_score,
-        "experience_rating": experience_rating,
     }
     response = requests.post(f"{BACKEND_URL}/submit-feedback", json=payload, timeout=30)
     response.raise_for_status()
@@ -174,23 +172,14 @@ def render_feedback_form(candidate_id: int) -> None:
 
     with st.form("feedback_form"):
         confidence_score = st.slider("Confidence Score", min_value=1, max_value=10, value=7)
-        experience_rating = st.text_input(
-            "Experience Rating",
-            placeholder="For example: Strong communication, solid technical skills",
-        )
         submitted_feedback = st.form_submit_button("Submit Feedback")
 
     if submitted_feedback:
-        if not experience_rating.strip():
-            st.warning("Please enter an experience rating before submitting.")
-            return
-
         try:
             with st.spinner("Saving feedback and sending email..."):
                 feedback_response = submit_feedback(
                     candidate_id=candidate_id,
                     confidence_score=confidence_score,
-                    experience_rating=experience_rating.strip(),
                 )
 
             email_sent = feedback_response["data"].get("email_sent", False)

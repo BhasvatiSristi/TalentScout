@@ -15,7 +15,6 @@ def submit_feedback(payload: FeedbackCreateRequest, db: Session = Depends(get_db
             db=db,
             candidate_id=payload.candidate_id,
             confidence_score=payload.confidence_score,
-            experience_rating=payload.experience_rating,
         )
     except CandidateNotFoundError as exc:
         raise HTTPException(
@@ -34,7 +33,6 @@ def submit_feedback(payload: FeedbackCreateRequest, db: Session = Depends(get_db
             "feedback_id": result["feedback_row"].id,
             "candidate_id": result["feedback_row"].candidate_id,
             "confidence_score": result["feedback_row"].confidence_score,
-            "experience_rating": result["feedback_row"].experience_rating,
             "ats_score": result["ats_score"],
             "email_sent": result["email_sent"],
             "email_error": result["email_error"],
