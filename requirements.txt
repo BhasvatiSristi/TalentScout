@@ -6,3 +6,5 @@ pydantic
 email-validator
 pdfplumber
 sqlalchemy
+psycopg2-binary
+python-dotenv
