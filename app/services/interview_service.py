@@ -1,3 +1,19 @@
+"""
+Purpose: Saves interview answers and updates interview session timing.
+
+Inputs:
+
+* Candidate id and submitted question-answer pairs
+
+Outputs:
+
+* Saved interview answer rows and updated session timing data
+
+Used in:
+
+* Called by the interview answers route after the user submits answers
+"""
+
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -9,11 +25,15 @@ from app.schemas.interview_answer import InterviewAnswerItem
 
 
 class CandidateNotFoundError(Exception):
-    """Raised when a candidate id does not exist."""
+    """
+    Raised when a candidate id does not exist.
+    """
 
 
 class InterviewSessionNotFoundError(Exception):
-    """Raised when interview session was not initialized before answer submission."""
+    """
+    Raised when interview session was not initialized before answer submission.
+    """
 
 
 def save_interview_answers(
@@ -21,7 +41,27 @@ def save_interview_answers(
     candidate_id: int,
     responses: list[InterviewAnswerItem],
 ) -> list[InterviewAnswer]:
-    """Save interview answers and update interview session timing."""
+    """
+    Save interview answers and update the interview session.
+
+    Parameters:
+
+    * db: SQLAlchemy database session
+    * candidate_id: Candidate id linked to the interview
+    * responses: List of submitted question and answer items
+
+    Returns:
+
+    * list[InterviewAnswer]: Saved answer rows
+
+    Steps:
+
+    1. Confirm the candidate exists
+    2. Load the interview session started during resume upload
+    3. Mark the submission time and compute total interview time
+    4. Save each answer row
+    5. Commit the changes and refresh the saved rows
+    """
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if candidate is None:
         raise CandidateNotFoundError("Candidate not found.")

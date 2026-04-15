@@ -1,3 +1,19 @@
+"""
+Purpose: Handles submitted interview answers.
+
+Inputs:
+
+* Candidate id and a list of question and answer pairs
+
+Outputs:
+
+* Saved interview answer records and interview timing data
+
+Used in:
+
+* Called after the user finishes answering generated interview questions
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -21,6 +37,24 @@ def submit_interview_answers(
     payload: InterviewAnswersCreateRequest,
     db: Session = Depends(get_db),
 ) -> InterviewAnswersCreateResponse:
+    """
+    Save the interview answers for a candidate.
+
+    Parameters:
+
+    * payload: Candidate id and the submitted responses
+    * db: Database session from the dependency injection system
+
+    Returns:
+
+    * InterviewAnswersCreateResponse: Saved answer records
+
+    Steps:
+
+    1. Pass the answers to the service layer
+    2. Convert missing candidate or session errors into HTTP responses
+    3. Return the saved answer data
+    """
     try:
         saved_answers = save_interview_answers(
             db=db,

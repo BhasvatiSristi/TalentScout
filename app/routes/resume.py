@@ -1,3 +1,19 @@
+"""
+Purpose: Handles resume upload and text extraction requests.
+
+Inputs:
+
+* Candidate id, job role, and uploaded PDF file
+
+Outputs:
+
+* Extracted resume text, skills, ATS score, and interview questions
+
+Used in:
+
+* Called after candidate intake to process the resume PDF
+"""
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -19,6 +35,27 @@ async def upload_and_extract_resume(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ) -> ResumeExtractResponse:
+    """
+    Upload a resume, extract text, and run scoring.
+
+    Parameters:
+
+    * candidate_id: Candidate id from the intake flow
+    * job_role: Job role selected for scoring and question generation
+    * file: Uploaded PDF resume file
+    * db: Database session from the dependency injection system
+
+    Returns:
+
+    * ResumeExtractResponse: Resume data, scores, and generated questions
+
+    Steps:
+
+    1. Validate that the file is a PDF and has a name
+    2. Read the file bytes from the upload
+    3. Send the data to the service layer for processing
+    4. Convert service errors into HTTP responses
+    """
     if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

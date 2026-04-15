@@ -1,3 +1,19 @@
+"""
+Purpose: Saves final feedback and sends the summary email.
+
+Inputs:
+
+* Candidate id and confidence score from the feedback form
+
+Outputs:
+
+* Saved feedback row, ATS score, and email delivery status
+
+Used in:
+
+* Called by the feedback route after the interview is complete
+"""
+
 from sqlalchemy.orm import Session
 
 from app.models.candidate import Candidate
@@ -7,7 +23,9 @@ from app.services.email_service import send_email
 
 
 class CandidateNotFoundError(Exception):
-    """Raised when a candidate id does not exist."""
+    """
+    Raised when a candidate id does not exist.
+    """
 
 
 def save_feedback_and_send_email(
@@ -15,7 +33,28 @@ def save_feedback_and_send_email(
     candidate_id: int,
     confidence_score: int,
 ) -> dict:
-    """Save feedback, then send the email summary."""
+    """
+    Save feedback and send a summary email.
+
+    Parameters:
+
+    * db: SQLAlchemy database session
+    * candidate_id: Candidate id linked to the feedback
+    * confidence_score: Final confidence score from the user
+
+    Returns:
+
+    * dict: Saved feedback row, ATS score, email success flag, and email error text
+
+    Steps:
+
+    1. Confirm the candidate exists
+    2. Read the latest resume ATS score
+    3. Save the feedback row
+    4. Build the email body
+    5. Send the email and record whether it succeeded
+    6. Return the collected result data
+    """
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if candidate is None:
         raise CandidateNotFoundError("Candidate not found.")

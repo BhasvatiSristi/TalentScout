@@ -1,3 +1,19 @@
+"""
+Purpose: Handles final interview feedback submission.
+
+Inputs:
+
+* Candidate id and a confidence score from the frontend
+
+Outputs:
+
+* Saved feedback data plus email delivery status
+
+Used in:
+
+* Called after interview answers are submitted and the process is complete
+"""
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -10,6 +26,24 @@ router = APIRouter()
 
 @router.post("/submit-feedback")
 def submit_feedback(payload: FeedbackCreateRequest, db: Session = Depends(get_db)) -> dict:
+    """
+    Save feedback and send the summary email.
+
+    Parameters:
+
+    * payload: Candidate id and confidence score
+    * db: Database session from the dependency injection system
+
+    Returns:
+
+    * dict: Message and saved feedback details
+
+    Steps:
+
+    1. Save the feedback through the service layer
+    2. Convert service errors into HTTP responses
+    3. Return the stored feedback and email status
+    """
     try:
         result = save_feedback_and_send_email(
             db=db,

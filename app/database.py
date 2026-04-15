@@ -1,3 +1,19 @@
+"""
+Purpose: Configures the database connection and session helpers.
+
+Inputs:
+
+* DATABASE_URL environment variable or a local SQLite fallback
+
+Outputs:
+
+* SQLAlchemy engine, session factory, and database session dependency
+
+Used in:
+
+* Shared by routers and services that need database access
+"""
+
 import os
 
 from dotenv import load_dotenv
@@ -18,6 +34,23 @@ Base = declarative_base()
 
 
 def get_db():
+    """
+    Provide a database session for request handlers.
+
+    Parameters:
+
+    * None
+
+    Returns:
+
+    * Generator: Yields one SQLAlchemy session and closes it afterward
+
+    Steps:
+
+    1. Create a new session
+    2. Yield it to the caller
+    3. Close the session after the request finishes
+    """
     db = SessionLocal()
     try:
         yield db

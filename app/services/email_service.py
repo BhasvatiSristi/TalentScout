@@ -1,4 +1,21 @@
+"""
+Purpose: Sends email messages using SMTP settings from the environment.
+
+Inputs:
+
+* Recipient email, subject, and message body
+
+Outputs:
+
+* A sent email or a runtime error if delivery fails
+
+Used in:
+
+* Called by the feedback service after feedback is saved
+"""
+
 from dotenv import load_dotenv
+
 load_dotenv()  # Load environment variables from .env file
 import os
 import smtplib
@@ -6,7 +23,27 @@ from email.message import EmailMessage
 
 
 def send_email(to_email: str, subject: str, body: str) -> None:
-    """Send an email using SMTP settings from environment variables."""
+    """
+    Send an email with SMTP settings from environment variables.
+
+    Parameters:
+
+    * to_email: Recipient email address
+    * subject: Email subject line
+    * body: Plain text email body
+
+    Returns:
+
+    * None
+
+    Steps:
+
+    1. Read SMTP settings from the environment
+    2. Build the email message
+    3. Open an SMTP connection
+    4. Start TLS, log in, and send the message
+    5. Raise a runtime error if sending fails
+    """
     smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
     smtp_port = int(os.getenv("SMTP_PORT", "587").strip())
     smtp_user = os.getenv("SMTP_USER", "").strip()

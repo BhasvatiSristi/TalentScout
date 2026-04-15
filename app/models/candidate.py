@@ -1,3 +1,19 @@
+"""
+Purpose: Stores candidate records in the database.
+
+Inputs:
+
+* Candidate name, email, phone, job role, and creation time
+
+Outputs:
+
+* SQLAlchemy candidate rows for the screening workflow
+
+Used in:
+
+* Candidate intake service and downstream resume and feedback flows
+"""
+
 from datetime import datetime
 
 from sqlalchemy import Column, DateTime, Integer, String
@@ -6,6 +22,22 @@ from app.database import Base
 
 
 class Candidate(Base):
+    """
+    Define the candidates table structure.
+
+    Parameters:
+
+    * None
+
+    Returns:
+
+    * Candidate: SQLAlchemy model class for candidate rows
+
+    Steps:
+
+    1. Declare the table name
+    2. Define the columns stored for each candidate
+    """
     __tablename__ = "candidates"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -1,4 +1,18 @@
-"""Service module for resume extraction and scoring workflows."""
+"""
+Purpose: Extracts resume text, scores skills, and creates interview questions.
+
+Inputs:
+
+* Resume PDF bytes, candidate id, and job role
+
+Outputs:
+
+* Saved resume data, skill matches, ATS score, and interview questions
+
+Used in:
+
+* Called by the resume upload route after a PDF is submitted
+"""
 
 from io import BytesIO
 from datetime import datetime
@@ -14,15 +28,36 @@ from app.services.scoring_service import calculate_ats_score, extract_skills, ge
 
 
 class CandidateNotFoundError(Exception):
-    """Raised when resume upload references a missing candidate."""
+    """
+    Raised when resume upload references a missing candidate.
+    """
 
 
 class ResumeProcessingError(Exception):
-    """Raised for invalid resume content or role matching input."""
+    """
+    Raised for invalid resume content or role matching input.
+    """
 
 
 def extract_text_from_pdf(file_content: bytes) -> str:
-    """Extract all text from a PDF file."""
+    """
+    Extract text from a PDF file.
+
+    Parameters:
+
+    * file_content: Raw bytes read from the uploaded PDF
+
+    Returns:
+
+    * str: Combined text from all readable PDF pages
+
+    Steps:
+
+    1. Wrap the file bytes in a PDF reader object
+    2. Loop through each page
+    3. Extract text from pages that contain readable content
+    4. Combine the page text into one string
+    """
     try:
         pdf_file = BytesIO(file_content)
         extracted_text = ""
@@ -51,7 +86,30 @@ def process_resume_upload(
     file_name: str,
     file_content: bytes,
 ) -> dict:
-    """Run resume extraction and scoring workflow, then persist results."""
+    """
+    Process a resume upload and save the results.
+
+    Parameters:
+
+    * db: SQLAlchemy database session
+    * candidate_id: Candidate id linked to the resume
+    * job_role: Job role used for skill matching
+    * file_name: Uploaded file name
+    * file_content: Raw bytes from the uploaded PDF
+
+    Returns:
+
+    * dict: Resume row plus extracted skills, score, and questions
+
+    Steps:
+
+    1. Confirm the candidate exists
+    2. Extract text from the PDF
+    3. Find skills, missing skills, and ATS score
+    4. Generate interview questions
+    5. Save the resume and interview session data
+    6. Return all processed results
+    """
     candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
     if candidate is None:
         raise CandidateNotFoundError("Candidate not found.")

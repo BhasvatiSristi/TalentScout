@@ -1,8 +1,17 @@
 """
-LLM-backed interview question generation service.
+Purpose: Generates interview questions with an LLM and a safe fallback.
 
-This module calls the Mistral Chat Completions API to generate role-aware
-interview questions using resume context and ATS skill gaps.
+Inputs:
+
+* Job role, resume text, extracted skills, and missing skills
+
+Outputs:
+
+* A list of interview questions in JSON-friendly format
+
+Used in:
+
+* Called by the resume service after resume text and skills are extracted
 """
 
 from __future__ import annotations
@@ -23,7 +32,24 @@ logger = logging.getLogger(__name__)
 
 
 def _trim_resume_text(resume_text: str, max_chars: int = 6000) -> str:
-    """Trim large resume text to keep token usage predictable."""
+    """
+    Trim long resume text so the prompt stays manageable.
+
+    Parameters:
+
+    * resume_text: Full resume text
+    * max_chars: Maximum number of characters to keep
+
+    Returns:
+
+    * str: Trimmed resume text
+
+    Steps:
+
+    1. Remove extra outer whitespace
+    2. Return the text as-is if it is short enough
+    3. Cut it down to the character limit if it is too long
+    """
     cleaned = (resume_text or "").strip()
     if len(cleaned) <= max_chars:
         return cleaned
@@ -36,7 +62,26 @@ def _build_messages(
     skills: list[str],
     missing_skills: list[str],
 ) -> list[dict[str, str]]:
-    """Build system and user prompts for reliable JSON output."""
+    """
+    Build the chat messages used for question generation.
+
+    Parameters:
+
+    * job_role: Job role for the candidate
+    * resume_text: Resume text used as context
+    * skills: Skills extracted from the resume
+    * missing_skills: Skills that are missing for the role
+
+    Returns:
+
+    * list[dict[str, str]]: System and user messages for the LLM call
+
+    Steps:
+
+    1. Create a system message with the JSON output rules
+    2. Create a user message with role, skills, and resume context
+    3. Return both messages in the format expected by the API
+    """
     system_prompt = (
         "You are an expert technical interviewer. "
         "Generate practical, role-specific interview questions. "
@@ -66,7 +111,25 @@ def _build_messages(
 
 
 def _fallback_questions(job_role: str, skills: list[str], missing_skills: list[str]) -> list[str]:
-    """Return deterministic questions when API fails, keeping endpoint usable."""
+    """
+    Build fallback questions when the LLM API is unavailable.
+
+    Parameters:
+
+    * job_role: Job role for the candidate
+    * skills: Skills extracted from the resume
+    * missing_skills: Skills missing for the role
+
+    Returns:
+
+    * list[str]: Deterministic interview questions
+
+    Steps:
+
+    1. Pick a role label and a few focus skills
+    2. Build a fixed set of interview questions
+    3. Return the questions so the app still works without the API
+    """
     role = job_role.strip() or "this role"
     gap_focus = missing_skills[:5] if missing_skills else ["core fundamentals"]
     strength_focus = skills[:3] if skills else ["your strongest skill"]
@@ -88,7 +151,25 @@ def _fallback_questions(job_role: str, skills: list[str], missing_skills: list[s
 
 
 def _extract_questions_from_response(content: str) -> list[str]:
-    """Parse and validate JSON response content from the model."""
+    """
+    Parse and validate the model response text.
+
+    Parameters:
+
+    * content: Raw JSON text returned by the model
+
+    Returns:
+
+    * list[str]: Clean list of interview questions
+
+    Steps:
+
+    1. Remove code fences if the model added them
+    2. Parse the JSON text
+    3. Check that the response contains a questions list
+    4. Keep only non-empty question strings
+    5. Limit the list to at most 12 questions
+    """
     raw_content = (content or "").strip()
 
     # Handle occasional fenced JSON responses.
@@ -123,7 +204,23 @@ def _extract_questions_from_response(content: str) -> list[str]:
 
 
 def _load_env_from_file() -> dict[str, str]:
-    """Lightweight .env reader so deploy/local runs work without extra dependencies."""
+    """
+    Read key-value pairs from the local .env file.
+
+    Parameters:
+
+    * None
+
+    Returns:
+
+    * dict[str, str]: Environment values loaded from the .env file
+
+    Steps:
+
+    1. Look for .env at the project root
+    2. Read each non-empty key-value line
+    3. Store the cleaned values in a dictionary
+    """
     env_path = Path(__file__).resolve().parents[2] / ".env"
     loaded: dict[str, str] = {}
 
@@ -144,7 +241,24 @@ def _load_env_from_file() -> dict[str, str]:
 
 
 def _get_setting(key: str, default: str = "") -> str:
-    """Get setting from environment first, then fallback to .env file."""
+    """
+    Read a setting from the environment or the local .env file.
+
+    Parameters:
+
+    * key: Name of the setting to read
+    * default: Value to use if the setting is missing
+
+    Returns:
+
+    * str: The setting value or the default
+
+    Steps:
+
+    1. Check the current process environment
+    2. If missing, read the local .env file
+    3. Return the first value that is found
+    """
     runtime_value = os.getenv(key, "").strip()
     if runtime_value:
         return runtime_value
@@ -159,7 +273,28 @@ def generate_questions(
     skills: list[str],
     missing_skills: list[str],
 ) -> list[str]:
-    """Generate 10-12 interview questions using Mistral API with prompt constraints."""
+    """
+    Generate interview questions with the LLM or a fallback set.
+
+    Parameters:
+
+    * job_role: Job role for the candidate
+    * resume_text: Resume text used as context
+    * skills: Skills extracted from the resume
+    * missing_skills: Skills that are missing for the role
+
+    Returns:
+
+    * list[str]: Ten to twelve interview questions
+
+    Steps:
+
+    1. Read the API key and model settings
+    2. Fall back to template questions if the key is missing
+    3. Send a request to the LLM API when available
+    4. Parse the response into a clean list of questions
+    5. Fall back to template questions if anything fails
+    """
     api_key = _get_setting("MISTRAL_API_KEY", "")
     if not api_key:
         logger.warning("Mistral API key not found. Falling back to template questions.")
