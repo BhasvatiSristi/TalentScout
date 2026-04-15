@@ -23,14 +23,23 @@ from sqlalchemy.orm import Session
 from app.models.candidate import Candidate
 from app.models.interview_session import InterviewSession
 from app.models.resume import Resume
-from app.services.llm_service import generate_questions
 from app.services.scoring_service import calculate_ats_score, extract_skills, get_required_skills, match_skills
 
 
 class CandidateNotFoundError(Exception):
     """
-    Raised when resume upload references a missing candidate.
+    Raised when a candidate id does not exist.
     """
+
+
+def get_candidate_or_raise(db: Session, candidate_id: int) -> Candidate:
+    """
+    Return candidate row by id or raise a service-friendly error.
+    """
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if candidate is None:
+        raise CandidateNotFoundError("Candidate not found.")
+    return candidate
 
 
 class ResumeProcessingError(Exception):
@@ -110,9 +119,7 @@ def process_resume_upload(
     5. Save the resume and interview session data
     6. Return all processed results
     """
-    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
-    if candidate is None:
-        raise CandidateNotFoundError("Candidate not found.")
+    get_candidate_or_raise(db=db, candidate_id=candidate_id)
 
     try:
         extracted_text = extract_text_from_pdf(file_content)
@@ -121,6 +128,9 @@ def process_resume_upload(
         matched_skills = match_skills(extracted_skills, required_skills)
         missing_skills = [skill for skill in required_skills if skill not in matched_skills]
         ats_score = calculate_ats_score(matched_skills, required_skills)
+        # Local import avoids a module import cycle when interview_service imports helpers from here.
+        from app.services.interview_service import generate_questions
+
         interview_questions = generate_questions(
             job_role=job_role,
             resume_text=extracted_text,

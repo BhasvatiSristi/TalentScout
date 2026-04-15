@@ -15,7 +15,11 @@ Used in:
 * Main backend entry point for the screening API
 """
 
+import logging
+import time
+
 from fastapi import FastAPI
+from sqlalchemy.exc import OperationalError
 
 from app.database import Base, engine
 from app.models.candidate import Candidate
@@ -29,6 +33,8 @@ from app.routes.interview_answers import router as interview_answers_router
 from app.routes.resume import router as resume_router
 
 app = FastAPI(title="TalentScout - AI Hiring Assistant", version="1.0.0")
+
+logger = logging.getLogger(__name__)
 
 app.include_router(candidates_router, prefix="/candidates", tags=["Candidates"])
 app.include_router(resume_router, prefix="/candidates/resume", tags=["Resume"])
@@ -56,7 +62,26 @@ def create_tables() -> None:
     3. Finish startup so the API can serve requests
     """
     # For a fresh SQLite database, this creates every table from the models.
-    Base.metadata.create_all(bind=engine)
+    max_attempts = 4
+    last_error: Exception | None = None
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            Base.metadata.create_all(bind=engine)
+            return
+        except OperationalError as exc:
+            last_error = exc
+            if attempt == max_attempts:
+                break
+
+            logger.warning(
+                "Database startup failed (attempt %s/%s). Retrying in 2 seconds.",
+                attempt,
+                max_attempts,
+            )
+            time.sleep(2)
+
+    raise RuntimeError("Could not connect to database during startup.") from last_error
 
 
 @app.get("/")

@@ -24,10 +24,19 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./talentscout.db")
 
+# Some managed Postgres poolers can terminate handshakes when channel binding is forced.
+if "channel_binding=require" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("channel_binding=require", "channel_binding=prefer")
+
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={"connect_timeout": 10},
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
