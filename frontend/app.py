@@ -285,7 +285,7 @@ def render_interview_questions(candidate_id: int) -> None:
         st.info("No interview questions are available for this submission.")
         return
 
-    st.subheader("AI Conversational Interview")
+    st.subheader("AI Interview")
     st.caption("Answer each question and submit to continue to the next one.")
     st.progress(current_number / max(total_questions, 1))
     st.markdown(f"**Question {current_number} of {total_questions}**")
@@ -424,7 +424,7 @@ if "interview_history" not in st.session_state:
     st.session_state.interview_history = []
 
 st.title("TalentScout - AI Hiring Assistant")
-st.write("Submit candidate details and upload a resume to send data to the FastAPI backend.")
+st.write("Please submit your details and upload the resume.")
 
 st.divider()
 
