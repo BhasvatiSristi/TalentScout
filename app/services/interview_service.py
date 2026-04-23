@@ -287,6 +287,9 @@ def get_next_interview_question(db: Session, candidate_id: int) -> dict:
             "total_questions": total_questions,
             "question": None,
             "completed": True,
+            "interview_started_at": interview_session.started_at,
+            "interview_submitted_at": interview_session.submitted_at,
+            "total_time_seconds": interview_session.total_time_seconds,
         }
 
     next_question = (
@@ -305,6 +308,9 @@ def get_next_interview_question(db: Session, candidate_id: int) -> dict:
         "total_questions": total_questions,
         "question": next_question.question,
         "completed": False,
+        "interview_started_at": interview_session.started_at,
+        "interview_submitted_at": interview_session.submitted_at,
+        "total_time_seconds": interview_session.total_time_seconds,
     }
 
 

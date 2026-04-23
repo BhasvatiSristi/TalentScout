@@ -140,6 +140,9 @@ class InterviewNextQuestionData(BaseModel):
     total_questions: int
     question: str | None = None
     completed: bool
+    interview_started_at: datetime | None = None
+    interview_submitted_at: datetime | None = None
+    total_time_seconds: float | None = None
 
 
 class InterviewNextQuestionResponse(BaseModel):
