@@ -119,3 +119,33 @@ class InterviewAnswersCreateResponse(BaseModel):
     """
     message: str = "Interview answers saved successfully"
     data: list[InterviewAnswerSaved]
+
+
+class InterviewAnswerStepRequest(BaseModel):
+    """
+    Validate one conversational interview answer submission.
+    """
+
+    candidate_id: int = Field(..., ge=1)
+    answer: str = Field(..., min_length=1)
+
+
+class InterviewNextQuestionData(BaseModel):
+    """
+    Shape conversational interview progress details.
+    """
+
+    candidate_id: int
+    current_question_number: int
+    total_questions: int
+    question: str | None = None
+    completed: bool
+
+
+class InterviewNextQuestionResponse(BaseModel):
+    """
+    Wrap conversational question/progress payload.
+    """
+
+    message: str
+    data: InterviewNextQuestionData

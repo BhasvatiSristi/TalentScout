@@ -19,17 +19,87 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.schemas.interview_answer import (
+    InterviewAnswerStepRequest,
     InterviewAnswersCreateRequest,
     InterviewAnswersCreateResponse,
+    InterviewNextQuestionData,
+    InterviewNextQuestionResponse,
     InterviewAnswerSaved,
 )
 from app.services.interview_service import (
     CandidateNotFoundError,
     InterviewSessionNotFoundError,
+    get_next_interview_question,
     save_interview_answers,
+    submit_interview_answer_step,
 )
 
 router = APIRouter()
+
+
+@router.get("/next", response_model=InterviewNextQuestionResponse)
+def get_next_question(candidate_id: int, db: Session = Depends(get_db)) -> InterviewNextQuestionResponse:
+    """
+    Return the next conversational interview question for a candidate.
+    """
+    try:
+        payload = get_next_interview_question(db=db, candidate_id=candidate_id)
+    except CandidateNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except InterviewSessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return InterviewNextQuestionResponse(
+        message="Next interview question fetched successfully",
+        data=InterviewNextQuestionData(**payload),
+    )
+
+
+@router.post("/submit-step", response_model=InterviewNextQuestionResponse)
+def submit_interview_answer_stepwise(
+    payload: InterviewAnswerStepRequest,
+    db: Session = Depends(get_db),
+) -> InterviewNextQuestionResponse:
+    """
+    Save one answer and return the next conversational question.
+    """
+    try:
+        result = submit_interview_answer_step(
+            db=db,
+            candidate_id=payload.candidate_id,
+            answer=payload.answer,
+        )
+    except CandidateNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except InterviewSessionNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+
+    return InterviewNextQuestionResponse(
+        message="Interview answer saved successfully",
+        data=InterviewNextQuestionData(**result),
+    )
 
 
 @router.post("/submit", response_model=InterviewAnswersCreateResponse)

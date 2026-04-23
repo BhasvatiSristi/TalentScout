@@ -28,6 +28,7 @@ import requests
 from sqlalchemy.orm import Session
 
 from app.models.interview_answer import InterviewAnswer
+from app.models.interview_question import InterviewQuestion
 from app.models.interview_session import InterviewSession
 from app.schemas.interview_answer import InterviewAnswerItem
 from app.services.resume_service import CandidateNotFoundError, get_candidate_or_raise
@@ -239,6 +240,109 @@ class InterviewSessionNotFoundError(Exception):
     """
     Raised when interview session was not initialized before answer submission.
     """
+
+
+def get_next_interview_question(db: Session, candidate_id: int) -> dict:
+    """
+    Return the next pending interview question for a candidate.
+    """
+    get_candidate_or_raise(db=db, candidate_id=candidate_id)
+
+    interview_session = (
+        db.query(InterviewSession)
+        .filter(InterviewSession.candidate_id == candidate_id)
+        .first()
+    )
+    if interview_session is None:
+        raise InterviewSessionNotFoundError("Interview session not found. Please upload resume first.")
+
+    total_questions = (
+        db.query(InterviewQuestion)
+        .filter(InterviewQuestion.candidate_id == candidate_id)
+        .count()
+    )
+    if total_questions == 0:
+        raise RuntimeError("No interview questions found. Please upload resume again.")
+
+    answered_count = (
+        db.query(InterviewAnswer)
+        .filter(InterviewAnswer.candidate_id == candidate_id)
+        .count()
+    )
+
+    if answered_count >= total_questions:
+        if interview_session.submitted_at is None:
+            submitted_at = datetime.utcnow()
+            total_time_seconds = round(
+                max(0.0, (submitted_at - interview_session.started_at).total_seconds()),
+                2,
+            )
+            interview_session.submitted_at = submitted_at
+            interview_session.total_time_seconds = total_time_seconds
+            db.commit()
+
+        return {
+            "candidate_id": candidate_id,
+            "current_question_number": total_questions,
+            "total_questions": total_questions,
+            "question": None,
+            "completed": True,
+        }
+
+    next_question = (
+        db.query(InterviewQuestion)
+        .filter(InterviewQuestion.candidate_id == candidate_id)
+        .order_by(InterviewQuestion.question_order.asc())
+        .offset(answered_count)
+        .first()
+    )
+    if next_question is None:
+        raise RuntimeError("Could not resolve next interview question.")
+
+    return {
+        "candidate_id": candidate_id,
+        "current_question_number": answered_count + 1,
+        "total_questions": total_questions,
+        "question": next_question.question,
+        "completed": False,
+    }
+
+
+def submit_interview_answer_step(db: Session, candidate_id: int, answer: str) -> dict:
+    """
+    Save one answer and return updated conversational progress.
+    """
+    clean_answer = answer.strip()
+    if not clean_answer:
+        raise RuntimeError("Answer cannot be empty.")
+
+    next_payload = get_next_interview_question(db=db, candidate_id=candidate_id)
+    if next_payload["completed"]:
+        raise RuntimeError("Interview is already completed.")
+
+    interview_session = (
+        db.query(InterviewSession)
+        .filter(InterviewSession.candidate_id == candidate_id)
+        .first()
+    )
+    if interview_session is None:
+        raise InterviewSessionNotFoundError("Interview session not found. Please upload resume first.")
+
+    answer_row = InterviewAnswer(
+        candidate_id=candidate_id,
+        question=next_payload["question"],
+        answer=clean_answer,
+        interview_started_at=interview_session.started_at,
+        interview_submitted_at=None,
+    )
+
+    try:
+        db.add(answer_row)
+        db.commit()
+        return get_next_interview_question(db=db, candidate_id=candidate_id)
+    except Exception as exc:
+        db.rollback()
+        raise RuntimeError("Could not save interview answer.") from exc
 
 
 def save_interview_answers(

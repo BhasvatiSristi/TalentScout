@@ -21,6 +21,8 @@ import pdfplumber
 from sqlalchemy.orm import Session
 
 from app.models.candidate import Candidate
+from app.models.interview_answer import InterviewAnswer
+from app.models.interview_question import InterviewQuestion
 from app.models.interview_session import InterviewSession
 from app.models.resume import Resume
 from app.services.scoring_service import calculate_ats_score, extract_skills, get_required_skills, match_skills
@@ -138,6 +140,27 @@ def process_resume_upload(
             missing_skills=missing_skills,
         )
         interview_started_at = datetime.utcnow()
+
+        # Reset previous interview question/answer state for this candidate.
+        (
+            db.query(InterviewAnswer)
+            .filter(InterviewAnswer.candidate_id == candidate_id)
+            .delete(synchronize_session=False)
+        )
+        (
+            db.query(InterviewQuestion)
+            .filter(InterviewQuestion.candidate_id == candidate_id)
+            .delete(synchronize_session=False)
+        )
+
+        for index, question in enumerate(interview_questions):
+            db.add(
+                InterviewQuestion(
+                    candidate_id=candidate_id,
+                    question_order=index,
+                    question=question,
+                )
+            )
 
         resume_record = Resume(
             candidate_id=candidate_id,

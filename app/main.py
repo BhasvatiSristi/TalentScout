@@ -25,6 +25,7 @@ from app.database import Base, engine
 from app.models.candidate import Candidate
 from app.models.feedback import Feedback
 from app.models.interview_answer import InterviewAnswer
+from app.models.interview_question import InterviewQuestion
 from app.models.interview_session import InterviewSession
 from app.models.resume import Resume
 from app.routes.candidates import router as candidates_router
