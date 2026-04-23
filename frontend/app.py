@@ -334,11 +334,13 @@ def render_interview_questions(candidate_id: int) -> None:
                 st.session_state.current_question_text = None
                 st.session_state.current_question_number = 0
                 st.session_state.total_questions = 0
+                st.rerun()
             else:
                 st.session_state.current_question_text = progress.get("question")
                 st.session_state.current_question_number = int(progress.get("current_question_number", 1))
                 st.session_state.total_questions = int(progress.get("total_questions", 0))
                 st.success("Answer saved. Next question loaded.")
+                st.rerun()
         except requests.HTTPError as error:
             error_detail = "Could not save responses."
             if error.response is not None:
