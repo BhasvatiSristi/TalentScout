@@ -24,7 +24,6 @@ High-level flow:
 6. Submit feedback and send email summary.
 
 ## Installation Instructions
-
 ### Prerequisites
 - Python 3.10+
 - pip
