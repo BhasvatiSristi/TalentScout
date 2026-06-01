@@ -43,7 +43,6 @@ JOB_ROLE_OPTIONS = [
     "Software Engineer",
 ]
 
-
 def submit_candidate(candidate_data: dict) -> dict:
     """
     Send candidate details to the backend intake endpoint.
