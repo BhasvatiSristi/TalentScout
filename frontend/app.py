@@ -104,41 +104,6 @@ def upload_resume(resume_file, candidate_id: int, job_role: str) -> dict:
     return response.json()
 
 
-def submit_interview_answers(
-    candidate_id: int,
-    responses: list[dict[str, str]],
-) -> dict:
-    """
-    Send interview question answers to the backend.
-
-    Parameters:
-
-    * candidate_id: Candidate id for the current interview session
-    * responses: List of question and answer pairs
-
-    Returns:
-
-    * dict: JSON response from the backend
-
-    Steps:
-
-    1. Build the request payload
-    2. Post it to the interview answers endpoint
-    3. Return the parsed JSON response
-    """
-    payload = {
-        "candidate_id": candidate_id,
-        "responses": responses,
-    }
-    response = requests.post(
-        f"{BACKEND_URL}/candidates/interview-answers/submit",
-        json=payload,
-        timeout=30,
-    )
-    response.raise_for_status()
-    return response.json()
-
-
 def get_next_interview_question(candidate_id: int) -> dict:
     """
     Fetch the next conversational interview question for a candidate.
@@ -191,31 +156,6 @@ def submit_feedback(candidate_id: int, confidence_score: int) -> dict:
     response = requests.post(f"{BACKEND_URL}/submit-feedback", json=payload, timeout=30)
     response.raise_for_status()
     return response.json()
-
-
-def extract_preview_lines(extracted_text: str, line_count: int = 5) -> str:
-    """
-    Build a short preview from extracted resume text.
-
-    Parameters:
-
-    * extracted_text: Full text extracted from the resume
-    * line_count: Number of non-empty lines to keep
-
-    Returns:
-
-    * str: Small preview text or a fallback message
-
-    Steps:
-
-    1. Split the text into lines
-    2. Remove empty lines
-    3. Return the first few readable lines
-    """
-    lines = [line.strip() for line in extracted_text.splitlines() if line.strip()]
-    if not lines:
-        return "No readable text was extracted from the resume."
-    return "\n".join(lines[:line_count])
 
 
 def format_backend_error(detail) -> str:
